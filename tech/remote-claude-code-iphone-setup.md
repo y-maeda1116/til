@@ -369,3 +369,95 @@ tmux attach -t claude
     ```
     
 - WSL2内で直接SSHサーバーを立てる方法もあるが、Windows側のOpenSSHから `wsl` コマンドで入る方がシンプルで安定
+
+## 付録：claude-code-starter-kit の導入
+
+> 参考: https://github.com/cloudnative-co/claude-code-starter-kit
+> 
+
+Cloud Native社が公開しているClaude Code環境のセットアップキット。
+
+インタラクティブウィザードで、[CLAUDE.md](http://CLAUDE.md)・MCP・hooks等を含む開発環境をワンコマンドで構築できる。
+
+### 前提条件
+
+- Claude Codeがインストール済みであること
+- macOS or Linux（WSL2含む）
+- Git, Node.js がインストール済み
+
+### Mac mini（macOS）での導入手順
+
+```bash
+# 1. Homebrewのインストール（未導入の場合）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. 必要なツールのインストール
+brew install node git
+
+# 3. Claude Codeのインストール
+npm install -g @anthropic-ai/claude-code
+
+# 4. Claude Codeの初回認証
+claude
+# → ブラウザが開き、認証フローを完了する
+# → Z.aiを使う場合は別途設定が必要
+
+# 5. プロジェクトディレクトリの作成・移動
+mkdir -p ~/projects/my-project
+cd ~/projects/my-project
+
+# 6. claude-code-starter-kit のインストール
+curl -fsSL https://raw.githubusercontent.com/cloudnative-co/claude-code-starter-kit/main/install.sh | bash
+
+# 7. ウィザードが起動するので、対話形式で設定
+# → プロファイル選択（用途に応じて）
+# → CLAUDE.md、MCP設定、hooks等が自動生成される
+```
+
+### WSL2（Windows暫定環境）での導入手順
+
+```bash
+# WSL2(Ubuntu)にSSH接続後
+
+# 1. 必要なツールのインストール
+sudo apt update
+sudo apt install -y nodejs npm git curl
+
+# 2. Node.jsのバージョンが古い場合はnvmで最新を入れる
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+source ~/.bashrc
+nvm install --lts
+
+# 3. Claude Codeのインストール
+npm install -g @anthropic-ai/claude-code
+
+# 4. Claude Codeの初回認証
+claude
+
+# 5. プロジェクトディレクトリの作成・移動
+mkdir -p ~/projects/my-project
+cd ~/projects/my-project
+
+# 6. claude-code-starter-kit のインストール
+curl -fsSL https://raw.githubusercontent.com/cloudnative-co/claude-code-starter-kit/main/install.sh | bash
+
+# 7. ウィザードに従って設定
+```
+
+### 生成されるファイル構成（想定）
+
+```
+~/projects/my-project/
+├── CLAUDE.md              # プロジェクト指示・メモリファイル
+├── .claude/
+│   ├── settings.json      # Claude Code設定
+│   ├── skills/            # スキル定義
+│   └── hooks/             # フック設定
+└── ...
+```
+
+### Tips
+
+- **プロジェクトごとにインストール**する想定。グローバルではなく各プロジェクトのルートで実行
+- [CLAUDE.md](http://CLAUDE.md)はプロジェクト固有の指示をClaude Codeに記憶させるファイル。カスタマイズ推奨
+- starter-kitの設定は `.claude/` 以下に格納されるため、**Gitでチーム共有も可能**
