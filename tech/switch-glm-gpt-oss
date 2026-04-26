@@ -1,0 +1,25 @@
+以下のスクリプトを使って切り替えられるようにした
+429のエラー出てるからGLMも多分大丈夫
+
+GLM
+cat cc-cloud
+---
+#!/bin/bash
+exec env \
+  ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" \
+  ANTHROPIC_AUTH_TOKEN="token wo ireru" \
+  claude --model glm-5.1 "$@"
+ ---
+
+gpt-oss
+cat cc-local
+---
+#!/bin/bash
+exec env \
+  ANTHROPIC_BASE_URL="http://localhost:11434" \
+  ANTHROPIC_AUTH_TOKEN="ollama" \
+  ANTHROPIC_API_KEY="" \
+  claude --model gpt-oss:20b "$@"
+---
+
+mcpだといい感じにgpt-ossが使えてたけど単品だと使いにくいので設定調整した
