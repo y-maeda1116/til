@@ -1,0 +1,124 @@
+# Weekly Task Board と herdr 運用の概要
+
+個人用に作ったタスク管理アプリ(Weekly Task Board)と、いま実際にタスクを回している Claude Code + herdr の運用を、並べて見返せるようにまとめたメモです。
+
+- リポジトリ: https://github.com/y-maeda1116/Weekly-Task-Board
+- 本番: https://weekly-task.maeda.coffee/
+
+## 背景
+
+Weekly Task Board は、もともと上司が使っていたノート式のタスク管理を、ウェブ版にしたものです。ウェブ版にするときに、タスク管理に便利そうな仕組みをいろいろ取り入れてみました。たとえば週次表示、見積もりと実績の時間、ジャーナリング、週次レビュー、コマンドパレットなどです。ブラウザだけで動き、データは端末のローカル(localStorage)に置く作りです。
+
+いまはタスク管理が herdr と Claude Code に移り、1タスク1タブで進めています。依頼したタブが残っている間は未完了で、終わったら閉じます。この「終わったら閉じる」という動きは、Weekly Task Board でタスクにチェックを付けて完了にする爽快感とほぼ同じです。タスクの記録や状況の確認も、タブとログで足りています。
+
+そのため、実質的に同じことが herdr と Claude Code でできてしまっています。Weekly Task Board は、完了のチェックを付ける気持ちよさでは今も勝っています。ただ、普段の管理を担う場面は、herdr 運用に置き換わりつつあります。
+
+## 2つの比較
+
+| | Weekly Task Board | herdr 運用 |
+|---|---|---|
+| 種類 | 自作の Web アプリ(PWA) | Claude Code の作業タブ運用(スキル＋シェルスクリプト) |
+| 置き場所 | GitHub リポジトリ(上記) | Claude Code のスキルフォルダ(`herdr-tasks`) |
+| 目的 | 週単位でタスクを管理する | 並行作業を別タブに任せ、状況を見失わない |
+| データ | ブラウザの localStorage | herdr のタブそのもの＋完了ログ(Markdown 1ファイル) |
+
+---
+
+# 第1部 Weekly Task Board
+
+## 1. これは何か
+
+- 週単位でタスクを並べて管理する Web アプリ(PWA)。個人利用が前提で、データはブラウザ内だけに保存します。
+- 主な機能(README より):
+  - 週次表示、ドラッグ＆ドロップ、見積もり/実績時間、完了率などの統計
+  - 週次レビュー(トップ3選択、Markdown 週報エクスポート)
+  - インタースティシャル・ジャーナリング(タスク開始メモ、完了時の Next Step)
+  - バレットジャーナル要素(未完了タスクの次週移行など)、モーニングページ
+  - 繰り返しタスク、テンプレート、コマンドパレット(Ctrl/Cmd+K)、ダークモード、JSON エクスポート/インポート
+
+## 2. 構成
+
+- 技術: TypeScript 7 Beta(tsgo)、Vite 8、Vitest(ユニット)、Playwright(E2E)、Service Worker
+- ソース([`src/`](https://github.com/y-maeda1116/Weekly-Task-Board/tree/main/src)): 役割で分割
+  - `app/`(初期化・描画・D&D・ストレージ)
+  - `features/`(機能モジュール、約27個)
+  - `models/`(繰り返し・曜日・一括移動)
+  - `types/`、`constants/`、`utils/`
+- データ: localStorage のみ(キー `weekly-task-board.tasks` / `weekly-task-board.settings` ほか)。サーバー側の保存なし。バックアップは JSON のエクスポート/インポート。
+- デプロイ: GitHub Actions ＋ gh-pages ブランチ。`main` が本番、`dev` が検証(`/dev/`)。
+- ドキュメント:
+  - [README.md](https://github.com/y-maeda1116/Weekly-Task-Board/blob/main/README.md)
+  - [CLAUDE.md](https://github.com/y-maeda1116/Weekly-Task-Board/blob/main/CLAUDE.md)(バージョン管理・デプロイ規則)
+  - [`.kiro/specs/`](https://github.com/y-maeda1116/Weekly-Task-Board/tree/main/.kiro/specs)(仕様書)
+  - [`docs/superpowers/`](https://github.com/y-maeda1116/Weekly-Task-Board/tree/main/docs/superpowers)(ジャーナリングとコマンドパレットの設計書・計画)
+
+## 3. 設計思想
+
+読み取れた範囲のみ。
+
+- 個人利用のクライアント完結型: README に「クライアント側で動作し、すべてのデータは LocalStorage に保存」とある。
+- コマンドパレットの背景: 検索がなく、過去週を手動で遡るしかなかった。主要画面にショートカットがなくマウス必須だった。これをキーボード中心の操作に寄せる狙い([設計書](https://github.com/y-maeda1116/Weekly-Task-Board/blob/main/docs/superpowers/specs/2026-09-16-command-palette-design.md))。
+- ジャーナリングの狙い: タスク切替え時の認知負荷を軽減すること([設計書](https://github.com/y-maeda1116/Weekly-Task-Board/blob/main/docs/superpowers/specs/2026-04-09-interstitial-journaling-design.md))。
+- 仕様の決め方: 設計書に「Q&A で確定」「承認済み設計」とあり、AI と対話して合意してから実装する進め方。
+- 上記以外(なぜ週単位か、なぜサーバーを持たないか等): 記載なし。
+
+## 4. 気になる点
+
+事実:
+- CLAUDE.md は「プッシュごとにパッチバージョンを上げる」と定めているが、`src/app/init.ts` は 1.9.14、package.json は 1.9.2 とずれている。
+- 最終コミットは 2026-10-08。直近は未実装だったカレンダー同期機能の削除。
+- 移行メモ(MIGRATION_PROGRESS.md など)に古い情報が残っている。機能リスト(FEATURE_REQUESTS.md)は完了と未着手が混在している。
+
+所見:
+- データが端末のブラウザ内だけなので、端末をまたぐ利用や紛失への備えは JSON バックアップ頼み。
+
+---
+
+# 第2部 herdr 運用(herdr-tasks)
+
+## 1. これは何か
+
+- ターミナルのタブ管理ツール herdr の上で、Claude Code の作業を「1作業1タブ」に分けて任せる運用。`herdr-tasks` というスキルとシェルスクリプト4本で実現しています。
+- 解決したかった困りごと: タブが増えて「どこで何をしていたか」「完了したか」が分からなくなっていた。
+
+## 2. 運用ルール
+
+- 常設タブは `terminal`(手作業のシェル)と `main`(指示を出すセッション)の2つだけ。
+- main は司令官: 調査・資料作成など手を動かす作業は、main 内のサブエージェントではなく別タブに任せる。
+- 1作業1タブ。タブ名は作業名(短い日本語、番号だけの名前にしない)。
+- タブが残っている=未完了。タブを閉じるのは、ユーザーが「完了」と言ったときだけ。
+- main は依頼したら完了を待たず、「状況は?」で一覧を出す。承認待ちのタブには main が代わりに答えない。
+- 作業タブのモデルは既定 sonnet。精度が要る作業だけ理由を添えて opus を提案する。main 自身は opus。
+- 依頼文の末尾に「戻せない操作(外部への送信・起票・削除など)は実行前に確認する」の一文を必ず入れる。
+
+## 3. 仕組み
+
+- スキル: `herdr-tasks/SKILL.md`。手順は6つ(任せる / 状況一覧 / 閉じる / 追加指示 / 復活 / 今日のタブ作成)。
+- スクリプト(`scripts/`):
+  - `new-task.sh`: タブを作り、Claude を起動して依頼文を送る。完了は待たない。
+  - `status.sh`: 作業タブの状態(作業中・承認待ち・完了未読・返事待ち)と直近出力を一覧にする。
+  - `close-task.sh`: ログに1行追記してからタブを閉じる。`terminal` と `main` は閉じない。
+  - `resume-task.sh`: 閉じたタブを、ログの session から `--resume` で復活させる。
+- 流れ:
+  - 依頼文: main が自己完結の依頼文(目的・対象・完了の形)を書き、`new-task.sh` に渡す。作業タブの Claude は main の会話を知らないため。
+  - ログ: 閉じるときに「日付 | タブ名 | 結果の要約 | session | cwd」を Markdown に1行足す。台帳は別に作らず、記録はタブとこのログだけ。
+  - 今日のタブ: 朝のルーティンの最後に、前日の引き継ぎと予定表から「作業」「打合せ準備」の候補を作り、番号で選んで一括作成する。1日1回の歯止めを記録ファイルで持つ。
+- 利用の規模: 運用開始から4日間でログが 35 件。調査や資料作成が中心。
+
+## 4. 設計思想
+
+根拠が読み取れるものだけ。
+
+- 記録の置き場: 別の台帳を作らず、herdr のタブそのものを記録とする(main の会話を消しても一覧を取り直せる)。
+- ログを Notion に置かない理由: 重いので不採用。
+- 完了を断じない: ターンが終わっていても「報告あり・確認待ち」と書き、推測で「完了」と書かない。
+- モデル選び: 利用量の偏りが理由。Opus が使用量の大半を占めていたため、作業タブは sonnet を既定にした。
+- 上記以外(herdr を選んだ理由など): 記載なし。
+
+## 5. 気になる点
+
+事実:
+- モデル方針が数日で2回変わった(迷ったら sonnet → 迷ったら opus → 既定 sonnet)。古いメモに旧方針が残っている。
+
+所見:
+- 完了判断を人に残す設計のため、閉じ忘れたタブが増えると「タブが残っている=未完了」の前提が崩れる。定期的に状況一覧で棚卸しするとよさそう。
